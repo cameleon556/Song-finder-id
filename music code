@@ -1,0 +1,94 @@
+local ScreenGui = Instance.new("ScreenGui")
+local MainFrame = Instance.new("Frame")
+local Title = Instance.new("TextLabel")
+local ScrollFrame = Instance.new("ScrollingFrame")
+local UIListLayout = Instance.new("UIListLayout")
+
+-- Parent to CoreGui for persistence
+ScreenGui.Parent = game:GetService("CoreGui")
+ScreenGui.Name = "ClubMusicHistory"
+
+-- Main Window Styles
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.Position = UDim2.new(0.5, -150, 0.3, 0)
+MainFrame.Size = UDim2.new(0, 300, 0, 350)
+MainFrame.Active = true
+MainFrame.Draggable = true
+
+Title.Parent = MainFrame
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+Title.Text = "🎵 Club Song History"
+Title.TextColor3 = Color3.new(1, 1, 1)
+Title.Font = Enum.Font.SourceSansBold
+Title.TextSize = 18
+
+ScrollFrame.Parent = MainFrame
+ScrollFrame.Position = UDim2.new(0, 5, 0, 45)
+ScrollFrame.Size = UDim2.new(1, -10, 1, -50)
+ScrollFrame.BackgroundTransparency = 1
+ScrollFrame.ScrollBarThickness = 6
+ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+
+UIListLayout.Parent = ScrollFrame
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding =集中.new(0, 5)
+
+local loggedIds = {}
+
+-- Function to add a song to the list
+local function addSongToList(name, id)
+    if loggedIds[id] then return end -- Don't add duplicates
+    loggedIds[id] = true
+
+    local Entry = Instance.new("Frame")
+    local SongText = Instance.new("TextLabel")
+    local CopyBtn = Instance.new("TextButton")
+
+    Entry.Name = "Entry"
+    Entry.Parent = ScrollFrame
+    Entry.Size = UDim2.new(1, -10, 0, 50)
+    Entry.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+
+    SongText.Parent = Entry
+    SongText.Size = UDim2.new(0.7, 0, 1, 0)
+    SongText.Position = UDim2.new(0, 5, 0, 0)
+    SongText.Text = name .. "\nID: " .. id
+    SongText.TextColor3 = Color3.new(1, 1, 1)
+    SongText.TextXAlignment = Enum.TextXAlignment.Left
+    SongText.BackgroundTransparency = 1
+    SongText.TextScaled = true
+
+    CopyBtn.Parent = Entry
+    CopyBtn.Size = UDim2.new(0.25, 0, 0.8, 0)
+    CopyBtn.Position = UDim2.new(0.72, 0, 0.1, 0)
+    CopyBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+    CopyBtn.Text = "Copy"
+    CopyBtn.TextColor3 = Color3.new(1, 1, 1)
+
+    CopyBtn.MouseButton1Click:Connect(function()
+        setclipboard(id)
+        CopyBtn.Text = "Saved!"
+        task.wait(1)
+        CopyBtn.Text = "Copy"
+    end)
+
+    -- Adjust scroll area
+    ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y)
+end
+
+-- Scanner Loop
+task.spawn(function()
+    while true do
+        for _, v in pairs(game:GetDescendants()) do
+            if v:IsA("Sound") and v.IsPlaying and v.Volume > 0 then
+                local id = v.SoundId:match("%d+")
+                if id and id ~= "" then
+                    addSongToList(v.Name, id)
+                end
+            end
+        end
+        task.wait(2) -- Check for new songs every 2 seconds
+    end
+end)
