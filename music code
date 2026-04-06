@@ -1,105 +1,108 @@
--- Wait for the game to load so the GUI doesn't "glitch" away
-repeat task.wait() until game:IsLoaded()
+-- Wait for game load
+if not game:IsLoaded() then game.Loaded:Wait() end
 
-local player = game.Players.LocalPlayer
-local pGui = player:WaitForChild("PlayerGui")
+local Market = game:GetService("MarketplaceService")
+local pGui = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 
--- Delete any old versions so they don't stack
-if pGui:FindFirstChild("ClubMusicLogger") then
-    pGui.ClubMusicLogger:Destroy()
-end
+-- Cleanup
+if pGui:FindFirstChild("MusicTracker") then pGui.MusicTracker:Destroy() end
 
--- Create the ScreenGui
+-- GUI Construction
 local sg = Instance.new("ScreenGui")
-sg.Name = "ClubMusicLogger"
+sg.Name = "MusicTracker"
 sg.Parent = pGui
-sg.ResetOnSpawn = false -- Keeps it on screen if you die
-sg.ZIndexBehavior = Enum.ZIndexBehavior.Global -- Makes sure it stays on top
+sg.ResetOnSpawn = false
 
--- Main Box
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 260, 0, 300)
-frame.Position = UDim2.new(0.5, -130, 0.4, 0) -- Middle of screen
-frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-frame.BorderSizePixel = 3
-frame.BorderColor3 = Color3.fromRGB(0, 170, 255) -- Blue border so you see it
+frame.Size = UDim2.new(0, 280, 0, 350)
+frame.Position = UDim2.new(0.5, -140, 0.2, 0)
+frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+frame.BorderSizePixel = 2
+frame.BorderColor3 = Color3.fromRGB(255, 0, 0) -- Red border so you can't miss it
 frame.Active = true
 frame.Draggable = true
 frame.Parent = sg
 
--- Header
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 40)
-title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-title.Text = "SONG HISTORY"
+title.Text = "🎵 CLUB ID LOGGER"
+title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 title.TextColor3 = Color3.new(1, 1, 1)
-title.TextSize = 20
 title.Font = Enum.Font.SourceSansBold
 title.Parent = frame
 
--- Scroll Area
 local scroll = Instance.new("ScrollingFrame")
 scroll.Size = UDim2.new(1, -10, 1, -50)
 scroll.Position = UDim2.new(0, 5, 0, 45)
 scroll.BackgroundTransparency = 1
 scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-scroll.ScrollBarThickness = 5
 scroll.Parent = frame
 
 local list = Instance.new("UIListLayout")
 list.Parent = scroll
 list.Padding = UDim.new(0, 5)
 
-local history = {}
+local cache = {}
 
--- Function to add the music to the box
-local function logMusic(name, id)
-    if history[id] then return end
-    history[id] = true
+-- Function to check if ID is Public
+local function getPrivacyStatus(id)
+    local success, info = pcall(function()
+        return Market:GetProductInfo(id)
+    end)
+    
+    if success and info then
+        -- If it has a name and creator, it's generally findable. 
+        -- If it's blocked by Roblox's 2022 audio update, it returns 'N/A' or errors.
+        return info.CanBePurchasedAsAsset == false and "🔴 PRIVATE" or "🟢 PUBLIC"
+    end
+    return "⚪ UNKNOWN"
+end
+
+local function addEntry(name, id)
+    if cache[id] then return end
+    cache[id] = true
+    
+    local status = getPrivacyStatus(id)
     
     local entry = Instance.new("Frame")
-    entry.Size = UDim2.new(1, -5, 0, 50)
-    entry.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    entry.Size = UDim2.new(1, -5, 0, 60)
+    entry.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     entry.Parent = scroll
     
-    local txt = Instance.new("TextLabel")
-    txt.Size = UDim2.new(0.7, 0, 1, 0)
-    txt.Text = name .. "\nID: " .. id
-    txt.TextColor3 = Color3.new(1, 1, 1)
-    txt.BackgroundTransparency = 1
-    txt.TextScaled = true
-    txt.Parent = entry
+    local infoLabel = Instance.new("TextLabel")
+    infoLabel.Size = UDim2.new(0.7, 0, 1, 0)
+    infoLabel.Text = name .. "\nID: " .. id .. "\nStatus: " .. status
+    infoLabel.TextColor3 = Color3.new(1, 1, 1)
+    infoLabel.TextScaled = true
+    infoLabel.BackgroundTransparency = 1
+    infoLabel.Parent = entry
     
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.25, 0, 0.8, 0)
-    btn.Position = UDim2.new(0.72, 0, 0.1, 0)
-    btn.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
-    btn.Text = "COPY"
-    btn.TextColor3 = Color3.new(1, 1, 1)
-    btn.Parent = entry
+    local copy = Instance.new("TextButton")
+    copy.Size = UDim2.new(0.25, 0, 0.6, 0)
+    copy.Position = UDim2.new(0.72, 0, 0.2, 0)
+    copy.Text = "COPY"
+    copy.BackgroundColor3 = (status == "🟢 PUBLIC") and Color3.new(0, 0.6, 0) or Color3.new(0.6, 0, 0)
+    copy.TextColor3 = Color3.new(1, 1, 1)
+    copy.Parent = entry
     
-    btn.MouseButton1Click:Connect(function()
+    copy.MouseButton1Click:Connect(function()
         setclipboard(id)
-        btn.Text = "COPIED"
-        task.wait(1)
-        btn.Text = "COPY"
+        copy.Text = "SAVED"
+        task.wait(0.5)
+        copy.Text = "COPY"
     end)
     
     scroll.CanvasSize = UDim2.new(0, 0, 0, list.AbsoluteContentSize.Y)
 end
 
--- Scanner Logic
+-- Fast Scan Loop
 task.spawn(function()
     while task.wait(1) do
-        for _, s in pairs(game:GetDescendants()) do
-            if s:IsA("Sound") and s.IsPlaying then
-                local sid = s.SoundId:match("%d+")
-                if sid then
-                    logMusic(s.Name, sid)
-                end
+        for _, obj in pairs(game:GetDescendants()) do
+            if obj:IsA("Sound") and obj.IsPlaying then
+                local id = obj.SoundId:match("%d+")
+                if id then addEntry(obj.Name, id) end
             end
         end
     end
 end)
-
-print("Music Logger Loaded Successfully!")
