@@ -1,94 +1,105 @@
-local ScreenGui = Instance.new("ScreenGui")
-local MainFrame = Instance.new("Frame")
-local Title = Instance.new("TextLabel")
-local ScrollFrame = Instance.new("ScrollingFrame")
-local UIListLayout = Instance.new("UIListLayout")
+-- Wait for the game to load so the GUI doesn't "glitch" away
+repeat task.wait() until game:IsLoaded()
 
--- Parent to CoreGui for persistence
-ScreenGui.Parent = game:GetService("CoreGui")
-ScreenGui.Name = "ClubMusicHistory"
+local player = game.Players.LocalPlayer
+local pGui = player:WaitForChild("PlayerGui")
 
--- Main Window Styles
-MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-MainFrame.Position = UDim2.new(0.5, -150, 0.3, 0)
-MainFrame.Size = UDim2.new(0, 300, 0, 350)
-MainFrame.Active = true
-MainFrame.Draggable = true
-
-Title.Parent = MainFrame
-Title.Size = UDim2.new(1, 0, 0, 40)
-Title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-Title.Text = "🎵 Club Song History"
-Title.TextColor3 = Color3.new(1, 1, 1)
-Title.Font = Enum.Font.SourceSansBold
-Title.TextSize = 18
-
-ScrollFrame.Parent = MainFrame
-ScrollFrame.Position = UDim2.new(0, 5, 0, 45)
-ScrollFrame.Size = UDim2.new(1, -10, 1, -50)
-ScrollFrame.BackgroundTransparency = 1
-ScrollFrame.ScrollBarThickness = 6
-ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-
-UIListLayout.Parent = ScrollFrame
-UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-UIListLayout.Padding =集中.new(0, 5)
-
-local loggedIds = {}
-
--- Function to add a song to the list
-local function addSongToList(name, id)
-    if loggedIds[id] then return end -- Don't add duplicates
-    loggedIds[id] = true
-
-    local Entry = Instance.new("Frame")
-    local SongText = Instance.new("TextLabel")
-    local CopyBtn = Instance.new("TextButton")
-
-    Entry.Name = "Entry"
-    Entry.Parent = ScrollFrame
-    Entry.Size = UDim2.new(1, -10, 0, 50)
-    Entry.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-
-    SongText.Parent = Entry
-    SongText.Size = UDim2.new(0.7, 0, 1, 0)
-    SongText.Position = UDim2.new(0, 5, 0, 0)
-    SongText.Text = name .. "\nID: " .. id
-    SongText.TextColor3 = Color3.new(1, 1, 1)
-    SongText.TextXAlignment = Enum.TextXAlignment.Left
-    SongText.BackgroundTransparency = 1
-    SongText.TextScaled = true
-
-    CopyBtn.Parent = Entry
-    CopyBtn.Size = UDim2.new(0.25, 0, 0.8, 0)
-    CopyBtn.Position = UDim2.new(0.72, 0, 0.1, 0)
-    CopyBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
-    CopyBtn.Text = "Copy"
-    CopyBtn.TextColor3 = Color3.new(1, 1, 1)
-
-    CopyBtn.MouseButton1Click:Connect(function()
-        setclipboard(id)
-        CopyBtn.Text = "Saved!"
-        task.wait(1)
-        CopyBtn.Text = "Copy"
-    end)
-
-    -- Adjust scroll area
-    ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y)
+-- Delete any old versions so they don't stack
+if pGui:FindFirstChild("ClubMusicLogger") then
+    pGui.ClubMusicLogger:Destroy()
 end
 
--- Scanner Loop
+-- Create the ScreenGui
+local sg = Instance.new("ScreenGui")
+sg.Name = "ClubMusicLogger"
+sg.Parent = pGui
+sg.ResetOnSpawn = false -- Keeps it on screen if you die
+sg.ZIndexBehavior = Enum.ZIndexBehavior.Global -- Makes sure it stays on top
+
+-- Main Box
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 260, 0, 300)
+frame.Position = UDim2.new(0.5, -130, 0.4, 0) -- Middle of screen
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+frame.BorderSizePixel = 3
+frame.BorderColor3 = Color3.fromRGB(0, 170, 255) -- Blue border so you see it
+frame.Active = true
+frame.Draggable = true
+frame.Parent = sg
+
+-- Header
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 40)
+title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+title.Text = "SONG HISTORY"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.TextSize = 20
+title.Font = Enum.Font.SourceSansBold
+title.Parent = frame
+
+-- Scroll Area
+local scroll = Instance.new("ScrollingFrame")
+scroll.Size = UDim2.new(1, -10, 1, -50)
+scroll.Position = UDim2.new(0, 5, 0, 45)
+scroll.BackgroundTransparency = 1
+scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+scroll.ScrollBarThickness = 5
+scroll.Parent = frame
+
+local list = Instance.new("UIListLayout")
+list.Parent = scroll
+list.Padding = UDim.new(0, 5)
+
+local history = {}
+
+-- Function to add the music to the box
+local function logMusic(name, id)
+    if history[id] then return end
+    history[id] = true
+    
+    local entry = Instance.new("Frame")
+    entry.Size = UDim2.new(1, -5, 0, 50)
+    entry.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    entry.Parent = scroll
+    
+    local txt = Instance.new("TextLabel")
+    txt.Size = UDim2.new(0.7, 0, 1, 0)
+    txt.Text = name .. "\nID: " .. id
+    txt.TextColor3 = Color3.new(1, 1, 1)
+    txt.BackgroundTransparency = 1
+    txt.TextScaled = true
+    txt.Parent = entry
+    
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.25, 0, 0.8, 0)
+    btn.Position = UDim2.new(0.72, 0, 0.1, 0)
+    btn.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+    btn.Text = "COPY"
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Parent = entry
+    
+    btn.MouseButton1Click:Connect(function()
+        setclipboard(id)
+        btn.Text = "COPIED"
+        task.wait(1)
+        btn.Text = "COPY"
+    end)
+    
+    scroll.CanvasSize = UDim2.new(0, 0, 0, list.AbsoluteContentSize.Y)
+end
+
+-- Scanner Logic
 task.spawn(function()
-    while true do
-        for _, v in pairs(game:GetDescendants()) do
-            if v:IsA("Sound") and v.IsPlaying and v.Volume > 0 then
-                local id = v.SoundId:match("%d+")
-                if id and id ~= "" then
-                    addSongToList(v.Name, id)
+    while task.wait(1) do
+        for _, s in pairs(game:GetDescendants()) do
+            if s:IsA("Sound") and s.IsPlaying then
+                local sid = s.SoundId:match("%d+")
+                if sid then
+                    logMusic(s.Name, sid)
                 end
             end
         end
-        task.wait(2) -- Check for new songs every 2 seconds
     end
 end)
+
+print("Music Logger Loaded Successfully!")
