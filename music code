@@ -1,107 +1,137 @@
--- Wait for game load
+-- Rex Music ID Logger
+-- Optimized for Delta Executor
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Market = game:GetService("MarketplaceService")
 local pGui = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 
--- Cleanup
-if pGui:FindFirstChild("MusicTracker") then pGui.MusicTracker:Destroy() end
+-- Cleanup previous versions
+if pGui:FindFirstChild("RexMusicLogger") then pGui.RexMusicLogger:Destroy() end
 
--- GUI Construction
 local sg = Instance.new("ScreenGui")
-sg.Name = "MusicTracker"
+sg.Name = "RexMusicLogger"
 sg.Parent = pGui
 sg.ResetOnSpawn = false
 
+-- Compact Main Frame (Medium-Small size)
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 280, 0, 350)
-frame.Position = UDim2.new(0.5, -140, 0.2, 0)
-frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-frame.BorderSizePixel = 2
-frame.BorderColor3 = Color3.fromRGB(255, 0, 0) -- Red border so you can't miss it
+frame.Size = UDim2.new(0, 240, 0, 260) -- Smaller, more compact size
+frame.Position = UDim2.new(0.5, -120, 0.35, 0)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+frame.BorderSizePixel = 0
 frame.Active = true
 frame.Draggable = true
 frame.Parent = sg
 
+-- Corner rounding for a clean look
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = frame
+
+-- Title Bar
 local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 40)
-title.Text = "🎵 CLUB ID LOGGER"
-title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-title.TextColor3 = Color3.new(1, 1, 1)
-title.Font = Enum.Font.SourceSansBold
+title.Size = UDim2.new(1, 0, 0, 30)
+title.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+title.Text = "REX MUSIC ID LOGGER"
+title.TextColor3 = Color3.fromRGB(0, 200, 255) -- Professional Blue
+title.Font = Enum.Font.GothamBold
+title.TextSize = 14
 title.Parent = frame
 
+local titleCorner = Instance.new("UICorner")
+titleCorner.CornerRadius = UDim.new(0, 8)
+titleCorner.Parent = title
+
+-- Scrolling List
 local scroll = Instance.new("ScrollingFrame")
-scroll.Size = UDim2.new(1, -10, 1, -50)
-scroll.Position = UDim2.new(0, 5, 0, 45)
+scroll.Size = UDim2.new(1, -10, 1, -40)
+scroll.Position = UDim2.new(0, 5, 0, 35)
 scroll.BackgroundTransparency = 1
 scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+scroll.ScrollBarThickness = 3
 scroll.Parent = frame
 
 local list = Instance.new("UIListLayout")
 list.Parent = scroll
-list.Padding = UDim.new(0, 5)
+list.Padding = UDim.new(0, 4)
 
-local cache = {}
+local history = {}
 
--- Function to check if ID is Public
-local function getPrivacyStatus(id)
+-- Privacy Checker (Public vs Private)
+local function checkPrivacy(id)
     local success, info = pcall(function()
         return Market:GetProductInfo(id)
     end)
     
     if success and info then
-        -- If it has a name and creator, it's generally findable. 
-        -- If it's blocked by Roblox's 2022 audio update, it returns 'N/A' or errors.
-        return info.CanBePurchasedAsAsset == false and "🔴 PRIVATE" or "🟢 PUBLIC"
+        -- If the asset is marked as 'Public Domain' or can be distributed
+        if info.IsPublicDomain or info.CanBePurchasedAsAsset then
+            return "🟢 PUBLIC (Use Anywhere)", Color3.new(0, 1, 0)
+        else
+            return "🔴 PRIVATE (Only This Game)", Color3.new(1, 0, 0)
+        end
     end
-    return "⚪ UNKNOWN"
+    return "⚪ UNKNOWN", Color3.new(0.7, 0.7, 0.7)
 end
 
-local function addEntry(name, id)
-    if cache[id] then return end
-    cache[id] = true
+local function addSong(name, id)
+    if history[id] then return end
+    history[id] = true
     
-    local status = getPrivacyStatus(id)
+    local statusText, statusColor = checkPrivacy(id)
     
     local entry = Instance.new("Frame")
-    entry.Size = UDim2.new(1, -5, 0, 60)
-    entry.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    entry.Size = UDim2.new(1, -5, 0, 55)
+    entry.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     entry.Parent = scroll
     
-    local infoLabel = Instance.new("TextLabel")
-    infoLabel.Size = UDim2.new(0.7, 0, 1, 0)
-    infoLabel.Text = name .. "\nID: " .. id .. "\nStatus: " .. status
-    infoLabel.TextColor3 = Color3.new(1, 1, 1)
-    infoLabel.TextScaled = true
-    infoLabel.BackgroundTransparency = 1
-    infoLabel.Parent = entry
+    local entryCorner = Instance.new("UICorner")
+    entryCorner.CornerRadius = UDim.new(0, 4)
+    entryCorner.Parent = entry
+
+    local info = Instance.new("TextLabel")
+    info.Size = UDim2.new(0.7, 0, 1, 0)
+    info.Position = UDim2.new(0, 5, 0, 0)
+    info.Text = "Name: " .. name .. "\nID: " .. id .. "\n" .. statusText
+    info.TextColor3 = Color3.new(1, 1, 1)
+    info.TextSize = 10
+    info.TextXAlignment = Enum.TextXAlignment.Left
+    info.BackgroundTransparency = 1
+    info.Parent = entry
     
     local copy = Instance.new("TextButton")
-    copy.Size = UDim2.new(0.25, 0, 0.6, 0)
-    copy.Position = UDim2.new(0.72, 0, 0.2, 0)
+    copy.Size = UDim2.new(0.25, 0, 0.7, 0)
+    copy.Position = UDim2.new(0.72, 0, 0.15, 0)
+    copy.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
     copy.Text = "COPY"
-    copy.BackgroundColor3 = (status == "🟢 PUBLIC") and Color3.new(0, 0.6, 0) or Color3.new(0.6, 0, 0)
     copy.TextColor3 = Color3.new(1, 1, 1)
+    copy.Font = Enum.Font.GothamBold
+    copy.TextSize = 11
     copy.Parent = entry
+
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 4)
+    btnCorner.Parent = copy
     
     copy.MouseButton1Click:Connect(function()
         setclipboard(id)
-        copy.Text = "SAVED"
-        task.wait(0.5)
+        copy.Text = "DONE!"
+        task.wait(1)
         copy.Text = "COPY"
     end)
     
     scroll.CanvasSize = UDim2.new(0, 0, 0, list.AbsoluteContentSize.Y)
 end
 
--- Fast Scan Loop
+-- Continuous Scanner
 task.spawn(function()
-    while task.wait(1) do
-        for _, obj in pairs(game:GetDescendants()) do
-            if obj:IsA("Sound") and obj.IsPlaying then
-                local id = obj.SoundId:match("%d+")
-                if id then addEntry(obj.Name, id) end
+    while task.wait(1.5) do
+        for _, s in pairs(game:GetDescendants()) do
+            if s:IsA("Sound") and s.IsPlaying then
+                local sid = s.SoundId:match("%d+")
+                if sid and sid ~= "" then
+                    addSong(s.Name, sid)
+                end
             end
         end
     end
